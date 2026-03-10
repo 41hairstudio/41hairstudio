@@ -247,6 +247,67 @@
   max-width: 500px;
 }
 
+/* ── Festivos (nacionales + Sevilla) ─────────────────────── */
+.react-calendar__tile.tile-holiday {
+  position: relative;
+  overflow: visible;
+  color: #b45309 !important;
+  background-color: rgba(217, 119, 6, 0.09) !important;
+  cursor: not-allowed !important;
+}
+
+.react-calendar__tile.tile-holiday:hover {
+  background-color: rgba(217, 119, 6, 0.18) !important;
+}
+
+/* ── Vacaciones (Notion) ───────────────────────────────── */
+.react-calendar__tile.tile-vacation {
+  position: relative;
+  overflow: visible;
+  color: #be185d !important;
+  background-color: rgba(219, 39, 119, 0.07) !important;
+  cursor: not-allowed !important;
+}
+
+.react-calendar__tile.tile-vacation:hover {
+  background-color: rgba(219, 39, 119, 0.15) !important;
+}
+
+/* ── Overlay invisible que captura el hover ──────────────── */
+.tile-blocked-trigger {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  cursor: not-allowed;
+}
+
+/* ── Tooltip de posición fija (React state) ───────────────── */
+.calendar-tooltip-fixed {
+  position: fixed;
+  background: #1c1c1c;
+  color: #fff;
+  padding: 6px 12px;
+  border-radius: 3px;
+  font-size: 12px;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 9999;
+  transform: translate(-50%, -140%);
+  letter-spacing: 0.3px;
+  font-weight: 400;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+.calendar-tooltip-fixed::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: #1c1c1c;
+}
+
 .time-slots-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));

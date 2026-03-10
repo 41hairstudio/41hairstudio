@@ -8,7 +8,11 @@ interface Service {
   note?: string;
 }
 
-const Services = () => {
+interface ServicesProps {
+  onReserveClick: () => void;
+}
+
+const Services = ({ onReserveClick }: ServicesProps) => {
   const services: Service[] = [
     { 
       name: 'Corte de pelo', 
@@ -54,7 +58,7 @@ const Services = () => {
         <h2 className="services-title">Nuestros Servicios</h2>
         <div className="services-grid">
           {services.map((service, index) => (
-            <div key={index} className="service-card">
+            <div key={index} className="service-card" style={{ cursor: 'pointer'}} onClick={onReserveClick}>
               <h3 className="service-name">{service.name}</h3>
               <p className="service-description">{service.description}</p>
               <div className="service-details">

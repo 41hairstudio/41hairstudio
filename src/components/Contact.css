@@ -9,7 +9,7 @@
 }
 
 .contact-container {
-  max-width: 800px;
+  max-width: 960px;
   margin: 0 auto;
   text-align: center;
   width: 100%;
@@ -35,7 +35,7 @@
 
 .contact-buttons {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: 2rem;
   margin-bottom: 3rem;
 }
@@ -67,6 +67,11 @@
 .contact-btn.instagram:hover {
   background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
   border-color: transparent;
+}
+
+.contact-btn.phone:hover {
+  background-color: #2563eb;
+  border-color: #2563eb;
 }
 
 .contact-icon {

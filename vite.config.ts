@@ -6,6 +6,8 @@ import react from '@vitejs/plugin-react-swc'
 function notionApiDevPlugin(env: Record<string, string>): Plugin {
   const NOTION_TOKEN = env.VITE_NOTION_TOKEN;
   const DATABASE_ID = env.VITE_NOTION_DATABASE_ID;
+  const NOTION_VACACIONES_TOKEN = env.VITE_NOTION_VACACIONES_TOKEN;
+  const VACACIONES_DATABASE_ID = env.VITE_NOTION_VACACIONES_DATABASE_ID;
   const NOTION_API_BASE = 'https://api.notion.com/v1';
   const NOTION_VERSION = '2022-06-28';
 
@@ -77,6 +79,21 @@ function notionApiDevPlugin(env: Record<string, string>): Plugin {
                   method: 'PATCH',
                   headers,
                   body: JSON.stringify({ archived: true }),
+                },
+              );
+              break;
+
+            case 'query-vacaciones':
+              notionRes = await fetch(
+                `${NOTION_API_BASE}/databases/${VACACIONES_DATABASE_ID}/query`,
+                {
+                  method: 'POST',
+                  headers: {
+                    Authorization: `Bearer ${NOTION_VACACIONES_TOKEN}`,
+                    'Content-Type': 'application/json',
+                    'Notion-Version': NOTION_VERSION,
+                  },
+                  body: JSON.stringify(body || {}),
                 },
               );
               break;

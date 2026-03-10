@@ -11,6 +11,7 @@ import {
   isTimeAvailableForUpdate,
   type Reservation,
 } from '../utils/notionReservations';
+import { fetchSpanishHolidays, fetchVacationPeriods, getVacationForDate as getVacationPeriodForDate, type PublicHoliday, type VacationPeriod } from '../utils/holidays';
 import './ManageBookingModal.css';
 
 interface ManageBookingModalProps {
@@ -30,6 +31,10 @@ const ManageBookingModal = ({ isOpen, onClose }: ManageBookingModalProps) => {
   const [newDate, setNewDate] = useState<Date | null>(null);
   const [newTime, setNewTime] = useState('');
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
+  const [holidays, setHolidays] = useState<PublicHoliday[]>([]);
+  const [vacationPeriods, setVacationPeriods] = useState<VacationPeriod[]>([]);
+  const [calendarLoading, setCalendarLoading] = useState(false);
+  const [tooltip, setTooltip] = useState<{ text: string; x: number; y: number } | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -45,6 +50,26 @@ const ManageBookingModal = ({ isOpen, onClose }: ManageBookingModalProps) => {
     return () => {
       document.body.style.overflow = 'unset';
     };
+  }, [isOpen]);
+
+  // Cargar festivos y vacaciones al abrir el modal
+  useEffect(() => {
+    const loadVacations = async () => {
+      setCalendarLoading(true);
+      try {
+        const [holidayData, vacations] = await Promise.all([
+          fetchSpanishHolidays(new Date().getFullYear()),
+          fetchVacationPeriods(),
+        ]);
+        setHolidays(holidayData);
+        setVacationPeriods(vacations);
+      } finally {
+        setCalendarLoading(false);
+      }
+    };
+    if (isOpen) {
+      loadVacations();
+    }
   }, [isOpen]);
 
   // Resetear estado al cerrar
@@ -102,7 +127,13 @@ const ManageBookingModal = ({ isOpen, onClose }: ManageBookingModalProps) => {
     }
   };
 
+  const getHolidayForDate = (date: Date): PublicHoliday | undefined => {
+    const dateStr = formatDate(date);
+    return holidays.find((h) => h.date === dateStr);
+  };
+
   const handleDateSelect = async (date: Date) => {
+    if (getHolidayForDate(date) || getVacationPeriodForDate(date, vacationPeriods)) return;
     setNewDate(date);
     setLoading(true);
     
@@ -266,6 +297,15 @@ const ManageBookingModal = ({ isOpen, onClose }: ManageBookingModalProps) => {
         {error && <div className="manage-error-message">{error}</div>}
         {success && <div className="manage-success-message">{success}</div>}
 
+        {tooltip && (
+          <div
+            className="calendar-tooltip-fixed"
+            style={{ left: tooltip.x, top: tooltip.y }}
+          >
+            {tooltip.text}
+          </div>
+        )}
+
         {step === 'phone' && (
           <div className="manage-step">
             <p className="manage-step-description">
@@ -341,6 +381,9 @@ const ManageBookingModal = ({ isOpen, onClose }: ManageBookingModalProps) => {
               Selecciona la nueva fecha para tu reserva
             </p>
             <div className="calendar-wrapper">
+              {calendarLoading ? (
+                <div className="booking-loading">Cargando calendario...</div>
+              ) : (
               <Calendar
                 onChange={(value) => handleDateSelect(value as Date)}
                 value={newDate}
@@ -367,10 +410,32 @@ const ManageBookingModal = ({ isOpen, onClose }: ManageBookingModalProps) => {
                   const maxDate = new Date(today);
                   maxDate.setMonth(maxDate.getMonth() + 2);
                   if (checkDate > maxDate) return true;
-                  
+
                   return false;
                 }}
+                tileClassName={({ date, view }) => {
+                  if (view !== 'month') return null;
+                  if (getVacationPeriodForDate(date, vacationPeriods)) return 'tile-vacation';
+                  if (getHolidayForDate(date)) return 'tile-holiday';
+                  return null;
+                }}
+                tileContent={({ date, view }) => {
+                  if (view !== 'month') return null;
+                  const vacation = getVacationPeriodForDate(date, vacationPeriods);
+                  const holiday = getHolidayForDate(date);
+                  const label = vacation?.motivo || holiday?.localName;
+                  if (!label) return null;
+                  return (
+                    <span
+                      className="tile-blocked-trigger"
+                      onMouseEnter={(e) => setTooltip({ text: label, x: e.clientX, y: e.clientY })}
+                      onMouseLeave={() => setTooltip(null)}
+                      onMouseMove={(e) => setTooltip({ text: label, x: e.clientX, y: e.clientY })}
+                    />
+                  );
+                }}
               />
+              )}
             </div>
             <button onClick={handleBack} className="manage-btn manage-btn-outline">
               Volver
@@ -499,13 +564,13 @@ const ManageBookingModal = ({ isOpen, onClose }: ManageBookingModalProps) => {
             )}
 
             <div className="confirm-actions">
-              <button onClick={handleBack} className="manage-btn manage-btn-outline">
+              <button onClick={handleBack} className="manage-btn manage-btn-outline" disabled={loading || !!success}>
                 Volver
               </button>
               <button
                 onClick={action === 'cancel' ? handleConfirmCancel : handleConfirmEdit}
                 className={`manage-btn ${action === 'cancel' ? 'manage-btn-danger' : 'manage-btn-primary'}`}
-                disabled={loading}
+                disabled={loading || !!success}
               >
                 {loading ? 'Procesando...' : action === 'cancel' ? 'Confirmar Cancelación' : 'Confirmar Cambios'}
               </button>

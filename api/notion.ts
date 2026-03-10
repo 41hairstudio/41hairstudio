@@ -23,6 +23,8 @@ interface VercelResponse extends ServerResponse {
 
 const NOTION_TOKEN = process.env.VITE_NOTION_TOKEN || '';
 const DATABASE_ID = process.env.VITE_NOTION_DATABASE_ID || '';
+const NOTION_VACACIONES_TOKEN = process.env.VITE_NOTION_VACACIONES_TOKEN || '';
+const VACACIONES_DATABASE_ID = process.env.VITE_NOTION_VACACIONES_DATABASE_ID || '';
 const NOTION_API_BASE = 'https://api.notion.com/v1';
 const NOTION_VERSION = '2022-06-28';
 
@@ -94,6 +96,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           body: JSON.stringify({
             archived: true
           })
+        });
+        break;
+
+      case 'query-vacaciones':
+        // Consultar base de datos de vacaciones (usa token y BD propios)
+        response = await fetch(`${NOTION_API_BASE}/databases/${VACACIONES_DATABASE_ID}/query`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${NOTION_VACACIONES_TOKEN}`,
+            'Content-Type': 'application/json',
+            'Notion-Version': NOTION_VERSION,
+          },
+          body: JSON.stringify(body || {})
         });
         break;
 

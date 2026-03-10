@@ -10,7 +10,7 @@ import {
 } from '../utils/notionReservations';
 import { sendConfirmationEmails } from '../utils/emailService';
 import { generateICSFile } from '../utils/calendar';
-import { fetchSpanishHolidays } from '../utils/holidays';
+import { fetchSpanishHolidays, fetchVacationPeriods, getVacationForDate as getVacationPeriodForDate, type PublicHoliday, type VacationPeriod } from '../utils/holidays';
 import './BookingModal.css';
 
 interface BookingModalProps {
@@ -38,7 +38,10 @@ const BookingModal = ({ isOpen, onClose }: BookingModalProps) => {
     phone: '',
   });
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
-  const [holidays, setHolidays] = useState<string[]>([]);
+  const [holidays, setHolidays] = useState<PublicHoliday[]>([]);
+  const [vacationPeriods, setVacationPeriods] = useState<VacationPeriod[]>([]);
+  const [calendarLoading, setCalendarLoading] = useState(false);
+  const [tooltip, setTooltip] = useState<{ text: string; x: number; y: number } | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -58,20 +61,33 @@ const BookingModal = ({ isOpen, onClose }: BookingModalProps) => {
     };
   }, [isOpen]);
 
-  // Cargar festivos al abrir el modal
+  // Cargar festivos y vacaciones al abrir el modal (antes de mostrar el calendario)
   useEffect(() => {
-    const loadHolidays = async () => {
-      const year = new Date().getFullYear();
-      const holidayData = await fetchSpanishHolidays(year);
-      const holidayDates = holidayData.map(h => h.date);
-      setHolidays(holidayDates);
+    const loadCalendarData = async () => {
+      setCalendarLoading(true);
+      try {
+        const [holidayData, vacations] = await Promise.all([
+          fetchSpanishHolidays(new Date().getFullYear()),
+          fetchVacationPeriods(),
+        ]);
+        setHolidays(holidayData);
+        setVacationPeriods(vacations);
+      } finally {
+        setCalendarLoading(false);
+      }
     };
     if (isOpen) {
-      loadHolidays();
+      loadCalendarData();
     }
   }, [isOpen]);
 
+  const getHolidayForDate = (date: Date): PublicHoliday | undefined => {
+    const dateStr = formatDate(date);
+    return holidays.find((h) => h.date === dateStr);
+  };
+
   const handleDateSelect = async (date: Date) => {
+    if (getHolidayForDate(date) || getVacationPeriodForDate(date, vacationPeriods)) return;
     setBookingData({ ...bookingData, date });
     setLoading(true);
     
@@ -276,10 +292,6 @@ const BookingModal = ({ isOpen, onClose }: BookingModalProps) => {
     // Deshabilitar sábados (no disponibles para reserva online)
     if (date.getDay() === 6) return true;
     
-    // Deshabilitar festivos
-    const dateStr = formatDate(date);
-    if (holidays.includes(dateStr)) return true;
-    
     // Deshabilitar el día de hoy si no quedan horas disponibles
     const isToday = checkDate.getTime() === today.getTime();
     if (isToday) {
@@ -345,22 +357,56 @@ const BookingModal = ({ isOpen, onClose }: BookingModalProps) => {
 
         {error && <div className="booking-error">{error}</div>}
 
+        {tooltip && (
+          <div
+            className="calendar-tooltip-fixed"
+            style={{ left: tooltip.x, top: tooltip.y }}
+          >
+            {tooltip.text}
+          </div>
+        )}
+
         <div className="booking-content">
           {step === 'date' && (
             <div className="booking-step">
               <h2 className="booking-title">Selecciona una fecha</h2>
-              <Calendar
-                onChange={(value) => handleDateSelect(value as Date)}
-                value={bookingData.date}
-                tileDisabled={isDateDisabled}
-                locale="es-ES"
-                minDate={new Date()}
-                maxDate={(() => {
-                  const max = new Date();
-                  max.setMonth(max.getMonth() + 2);
-                  return max;
-                })()}
-              />
+              {calendarLoading ? (
+                <div className="booking-loading">Cargando calendario...</div>
+              ) : (
+                <Calendar
+                  onChange={(value) => handleDateSelect(value as Date)}
+                  value={bookingData.date}
+                  tileDisabled={isDateDisabled}
+                  tileClassName={({ date, view }) => {
+                    if (view !== 'month') return null;
+                    if (getVacationPeriodForDate(date, vacationPeriods)) return 'tile-vacation';
+                    if (getHolidayForDate(date)) return 'tile-holiday';
+                    return null;
+                  }}
+                  tileContent={({ date, view }) => {
+                    if (view !== 'month') return null;
+                    const vacation = getVacationPeriodForDate(date, vacationPeriods);
+                    const holiday = getHolidayForDate(date);
+                    const label = vacation?.motivo || holiday?.localName;
+                    if (!label) return null;
+                    return (
+                      <span
+                        className="tile-blocked-trigger"
+                        onMouseEnter={(e) => setTooltip({ text: label, x: e.clientX, y: e.clientY })}
+                        onMouseLeave={() => setTooltip(null)}
+                        onMouseMove={(e) => setTooltip({ text: label, x: e.clientX, y: e.clientY })}
+                      />
+                    );
+                  }}
+                  locale="es-ES"
+                  minDate={new Date()}
+                  maxDate={(() => {
+                    const max = new Date();
+                    max.setMonth(max.getMonth() + 2);
+                    return max;
+                  })()}
+                />
+              )}
             </div>
           )}
 

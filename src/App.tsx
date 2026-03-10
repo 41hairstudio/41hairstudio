@@ -34,7 +34,7 @@ function App() {
       <Header onReserveClick={handleReserveClick} onManageClick={handleManageClick} />
       <main>
         <Hero />
-        <Services />
+        <Services onReserveClick={handleReserveClick} />
         <Gallery />
         <Schedule />
         <Contact />
